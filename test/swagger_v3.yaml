@@ -39,6 +39,8 @@ paths:
         - chain
       operationId: GetTopBlock
       description: Get the top block (either key or micro block)
+      parameters:
+        - $ref: '#/components/parameters/bigIntAsStringParam'
       responses:
         "200":
           description: Successful operation
@@ -3434,3 +3436,10 @@ components:
         - fee
         - auth_data
         - tx
+  parameters:
+    bigIntAsStringParam:
+      in: query
+      name: "big-int-as-string"
+      description: 'If this flag is set to true, the response will have all integers set as strings'
+      required: false
+      type: boolean

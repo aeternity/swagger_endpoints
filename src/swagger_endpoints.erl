@@ -32,7 +32,13 @@ from_yaml(Doc, Options0) ->
               Components = proplists:get_value("components", Doc, []),
               proplists:get_value("schemas", Components, [])
       end,
-  Parameters   = proplists:get_value("parameters", Doc, []),
+  Parameters   =
+    case OASVersion of
+      ?OAS2 -> proplists:get_value("parameters", Doc, []);
+      ?OAS3 ->
+        Cs = proplists:get_value("components", Doc, []),
+        proplists:get_value("parameters", Cs, [])
+    end,
   Definitions  = build_definitions(Definitions0, [], Options0, OASVersion),
   Options      = [{params, Parameters}, {defs, Definitions}, {baseuri, BaseUri} | Options0],
   {Definitions, endpoint_map(Endpoints,  #{}, Options, OASVersion), definitions_prefix(OASVersion)}.
@@ -162,7 +168,12 @@ params_to_json_schema(Params, Options, OASVersion) ->
                   lists:keydelete("content", 1, Param) ++ [{"schema", to_json_schema(Schema, Options)}]
             end
         end;
-      "#/parameters/" ++ Ref ->
+      ParamPath when is_list(ParamPath) ->
+        Ref =
+            case ParamPath of
+              "#/parameters/" ++ R0 when OASVersion =:= ?OAS2 -> R0;
+              "#/components/parameters/" ++ R0 when OASVersion =:= ?OAS3 -> R0
+            end,
         ParamRefs = proplists:get_value(params, Options, []),
         case lists:keyfind(Ref, 1, ParamRefs) of
           false ->

@@ -20,10 +20,10 @@ from_yaml_test_() ->
           application:stop(yamerl)
       end,
      [ {"Parses single definition", fun parses_single_definition/0}
-      , {"Parses various definitions", fun parses_definitions/0}
-      , {"Parses single endpoint and a definition", fun parses_single_endpoint/0}
-      , {"Parses complex scenario", fun parses_complex_scenario/0}
-      , {"Parses swagger.yaml from aeternity/aeternity", fun parses_swagger_yaml/0}
+     , {"Parses various definitions", fun parses_definitions/0}
+     , {"Parses single endpoint and a definition", fun parses_single_endpoint/0}
+     , {"Parses complex scenario", fun parses_complex_scenario/0}
+     , {"Parses swagger.yaml from aeternity/aeternity", fun parses_swagger_yaml/0}
       ]}.
 
 parses_single_definition() ->
@@ -225,9 +225,16 @@ parses_complex_scenario() ->
 
 parses_swagger_yaml() ->
     [V2Yaml] = yamerl_constr:file("test/swagger_v2.yaml"),
-    V2 = swagger_endpoints:from_yaml(V2Yaml, []),
+    {_V2Defs, _V2, _} = swagger_endpoints:from_yaml(V2Yaml, []),
     [V3Yaml] = yamerl_constr:file("test/swagger_v3.yaml"),
-    V3 = swagger_endpoints:from_yaml(V3Yaml, []),
+    {_V3Defs, V3, _V3Prefix} = swagger_endpoints:from_yaml(V3Yaml, []),
+    %% ensure we've parsed the param from #/components/parameters/
+    #{get := #{parameters := [[{"in","query"},
+                               {"name","big-int-as-string"},
+                               {"description",
+                               "If this flag is set to true, the response will have all integers set as strings"},
+                               {"required",false},
+                               {"type","boolean"}]]}} = maps:get('GetTopBlock', V3),
     ok.
 
 yaml(Opts) ->
