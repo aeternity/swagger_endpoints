@@ -16,7 +16,7 @@ init(State) ->
   {ok, State1}.
 
 from_yaml(Doc, Options0) ->
-  OASVersion    = get_version(Doc),
+  OASVersion = get_version(Doc),
   BaseUri =
       case OASVersion of
           ?OAS2 -> proplists:get_value("basePath", Doc, "/");
@@ -219,7 +219,8 @@ get_version(Doc) ->
         ?OAS2 -> ?OAS2;
         not_set ->
             case proplists:get_value("openapi", Doc) of
-                ?OAS3 -> ?OAS3
+                "3.0.2" -> ?OAS3;
+                ?OAS3   -> ?OAS3
             end
     end.
 
