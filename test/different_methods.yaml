@@ -1,0 +1,89 @@
+openapi: 3.0.0
+info:
+  description: This is an example yaml file with two different OperationIds under the same URL but having different methods
+  version: x.y.z
+  title: Different methods test
+  termsOfService: https://www.aeternity.com/terms/
+  contact:
+    email: apiteam@aeternity.com
+tags:
+  - name: test
+    description: Test tag
+paths:
+  /accounts{id}:
+    get:
+      tags:
+        - test
+      operationId: GetAccount
+      description: Get an account by ID
+      parameters:
+        - in: path
+          name: id
+          description: The account ID
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        "404":
+          description: Block not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reason:
+                    type: string
+    delete:
+      tags:
+        - test
+      operationId: DeleteAccount
+      description: Delete an account by ID
+      parameters:
+        - in: path
+          name: id
+          description: The account ID
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        "404":
+          description: Block not found
+          content:
+            application/json:
+                type: object
+                properties:
+                  reason:
+                    type: string
+externalDocs:
+  description: Find out more about Aeternity
+  url: http://www.aeternity.com
+servers:
+  - url: /v3
+components:
+  schemas:
+    KeyBlock:
+      type: object
+      properties:
+        id:
+          type: integer
+          minimum: 0
+        name:
+          type: string
