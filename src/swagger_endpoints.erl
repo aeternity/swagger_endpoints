@@ -53,24 +53,24 @@ build_definitions([{Def, Schema} | Defs], Definitions, Options, OASVersion) ->
 endpoint_map([], Map, _Options, _OASVersion) ->
   Map;
 endpoint_map([{Path, EP}|EPs], Map, Options, OASVersion) ->
-  {Key, Value} = method_part(Path, EP, Options, OASVersion),
-  endpoint_map(EPs, maps:put(Key, Value, Map), Options, OASVersion).
+   Methods = method_part(Path, EP, Options, OASVersion),
+   Map1 =
+    lists:foldl(
+      fun({Key, Value}, AccumMap) -> maps:put(Key, Value, AccumMap) end,
+      Map,
+      Methods),
+  endpoint_map(EPs, Map1, Options, OASVersion).
 
 
 method_part(Path, EP, Options, OASVersion) ->
-  case {lists:keyfind("post", 1, EP),
-        lists:keyfind("get", 1, EP)} of
-    {{"post", Attr}, false} ->
-      mk_operation(Path, Attr, post, Options, OASVersion);
-    {false, {"get", Attr}} ->
-      mk_operation(Path, Attr, get, Options, OASVersion);
-    {true, true} ->
-      throw({error, "use either method POST or GET in", Path});
-    {false, false} ->
-      throw({error, "need method POST or GET in", Path})
-  end.
+  AllowedMethods = ["get", "post", "put", "delete", "head", "options", "patch"],
+  lists:map(
+    fun({Method, Attrs}) ->
+      mk_operation(Path, Method, Attrs, Options, OASVersion)
+    end,
+    [{Method, Attrs} || {Method, Attrs} <- EP, lists:member(Method, AllowedMethods)]).
 
-mk_operation(Path, Attr, Method, Options, OASVersion) ->
+mk_operation(Path, Method, Attr, Options, OASVersion) ->
   BaseUri =
     iolist_to_binary(string:trim(proplists:get_value(baseuri, Options, "/"), trailing, "/")),
   BPath = iolist_to_binary(Path),
@@ -88,12 +88,13 @@ mk_operation(Path, Attr, Method, Options, OASVersion) ->
     end,
   Responses =
     maps:from_list(get_value("responses", {list, ReadResponse}, Attr, Path, [])),
-  {IdName, #{Method => #{
+  {IdName, #{
                 path => <<BaseUri/binary, BPath/binary>>,
+                method => Method,
                 tags => Tags,
                 parameters => params_to_json_schema(Body ++  Params, [{endpoint, IdName} | Options], OASVersion),
                 responses  => Responses
-              }}}.
+              }}.
 
 get_value(Name, Type, Attr, Path) ->
   get_value(Name, Type, Attr, Path, undefined).

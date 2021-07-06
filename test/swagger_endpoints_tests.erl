@@ -23,6 +23,7 @@ from_yaml_test_() ->
      , {"Parses various definitions", fun parses_definitions/0}
      , {"Parses single endpoint and a definition", fun parses_single_endpoint/0}
      , {"Parses complex scenario", fun parses_complex_scenario/0}
+     , {"Parses two operationIds under the same path with different methods", fun parses_different_methods/0}
      , {"Parses swagger.yaml from aeternity/aeternity", fun parses_swagger_yaml/0}
       ]}.
 
@@ -113,10 +114,11 @@ parses_single_endpoint() ->
             {[ {D ++ "UInt", #{<<"minimum">> => 0, <<"type">> => <<"integer">>}}
             ],
              #{'GetCurrentKeyBlockHeight' =>
-                #{get => #{parameters => [], path => <<"/v2/key-blocks/current/height">>,
+                #{parameters => [], path => <<"/v2/key-blocks/current/height">>,
+                           method => "get",
                            responses => #{200 => #{<<"properties">> => #{<<"height">> => #{<<"$ref">> => <<B/binary, "UInt16">>, <<"description">> => <<"Height">>}}, <<"type">> => <<"object">>},
                                           404 => #{<<"$ref">> => <<B/binary, "Error">>}},
-                            tags => [<<"external">>,<<"chain">>]}}}, D}
+                            tags => [<<"external">>,<<"chain">>]}}, D}
       end,
     V2Yaml = yaml(Gen(?OAS2)),
     V2Expected = Expected(?OAS2),
@@ -194,24 +196,28 @@ parses_complex_scenario() ->
               {D ++ "UInt16", #{<<"maximum">> => 65535,<<"minimum">> => 0, <<"type">> => <<"integer">>}},
               {D ++ "UInt", #{<<"minimum">> => 0, <<"type">> => <<"integer">>}}
             ],
-            #{'GetCurrentKeyBlock' => #{get => #{parameters => [], path => <<"/v2/key-blocks/current">>,
-                                                responses => #{200 => #{<<"$ref">> => <<B/binary, "KeyBlock">>}, 404 => #{<<"$ref">> => <<B/binary, "Error">>}},
-                                                tags => [<<"external">>,<<"chain">>]}},
-            'GetCurrentKeyBlockHeight' => #{get => #{parameters => [], path => <<"/v2/key-blocks/current/height">>,
-                                                      responses => #{200 => #{<<"properties">> => #{<<"height">> => #{<<"$ref">> => <<B/binary, "UInt16">>, <<"description">> => <<"Height">>}}, <<"type">> => <<"object">>},
-                                                                    404 => #{<<"$ref">> => <<B/binary, "Error">>}},
-                                                      tags => [<<"external">>,<<"chain">>]}},
-            'GetKeyBlockByHash' => #{get => #{parameters => [[{"in","path"}, {"name","hash"}, {"description", "The hash of the block"}, {"required",true}, {"type","string"}]], path => <<"/v2/key-blocks/hash/{hash}">>,
-                                              responses => #{200 => #{<<"$ref">> => <<B/binary, "KeyBlock">>},
-                                                             400 => #{<<"$ref">> => <<B/binary, "Error">>},
-                                                             404 => #{<<"$ref">> => <<B/binary, "Error">>}},
-                                              tags => [<<"external">>, <<"chain">>]}},
-            'PostKeyBlock' => #{post => #{parameters => [[{"in","body"},
-                                                          {"name","body"},
-                                                          {"description", "Mined key block"},
-                                                          {"required",true}, {"schema", #{<<"$ref">> => <<B/binary, "KeyBlock">>}}]], path => <<"/v2/key-blocks">>,
-                                          responses => #{200 => undefined, 400 => #{<<"$ref">> => <<B/binary, "Error">>}},
-                                          tags => [<<"internal">>, <<"chain">>]}}
+            #{'GetCurrentKeyBlock' => #{parameters => [], path => <<"/v2/key-blocks/current">>,
+                                        method => "get",
+                                        responses => #{200 => #{<<"$ref">> => <<B/binary, "KeyBlock">>}, 404 => #{<<"$ref">> => <<B/binary, "Error">>}},
+                                        tags => [<<"external">>,<<"chain">>]},
+            'GetCurrentKeyBlockHeight' => #{parameters => [], path => <<"/v2/key-blocks/current/height">>,
+                                            method => "get",
+                                            responses => #{200 => #{<<"properties">> => #{<<"height">> => #{<<"$ref">> => <<B/binary, "UInt16">>, <<"description">> => <<"Height">>}}, <<"type">> => <<"object">>},
+                                                          404 => #{<<"$ref">> => <<B/binary, "Error">>}},
+                                            tags => [<<"external">>,<<"chain">>]},
+            'GetKeyBlockByHash' => #{ parameters => [[{"in","path"}, {"name","hash"}, {"description", "The hash of the block"}, {"required",true}, {"type","string"}]], path => <<"/v2/key-blocks/hash/{hash}">>,
+                                      method => "get",
+                                      responses => #{200 => #{<<"$ref">> => <<B/binary, "KeyBlock">>},
+                                                      400 => #{<<"$ref">> => <<B/binary, "Error">>},
+                                                      404 => #{<<"$ref">> => <<B/binary, "Error">>}},
+                                      tags => [<<"external">>, <<"chain">>]},
+            'PostKeyBlock' => #{parameters => [[{"in","body"},
+                                                {"name","body"},
+                                                {"description", "Mined key block"},
+                                                {"required",true}, {"schema", #{<<"$ref">> => <<B/binary, "KeyBlock">>}}]], path => <<"/v2/key-blocks">>,
+                                method => "post",
+                                responses => #{200 => undefined, 400 => #{<<"$ref">> => <<B/binary, "Error">>}},
+                                tags => [<<"internal">>, <<"chain">>]}
              },
              D
           }
@@ -229,12 +235,34 @@ parses_swagger_yaml() ->
     [V3Yaml] = yamerl_constr:file("test/swagger_v3.yaml"),
     {_V3Defs, V3, _V3Prefix} = swagger_endpoints:from_yaml(V3Yaml, []),
     %% ensure we've parsed the param from #/components/parameters/
-    #{get := #{parameters := [[{"in","query"},
-                               {"name","big-int-as-string"},
-                               {"description",
-                               "If this flag is set to true, the response will have all integers set as strings"},
-                               {"required",false},
-                               {"type","boolean"}]]}} = maps:get('GetTopBlock', V3),
+    #{parameters := [[{"in","query"},
+                      {"name","big-int-as-string"},
+                      {"description",
+                      "If this flag is set to true, the response will have all integers set as strings"},
+                      {"required",false},
+                      {"type","boolean"}]],
+      method := "get"} = maps:get('GetTopBlock', V3),
+    ok.
+
+parses_different_methods() ->
+    [Yaml] = yamerl_constr:file("test/different_methods.yaml"),
+    {_Defs, Endpoints, _} = swagger_endpoints:from_yaml(Yaml, []),
+    #{parameters := [[{"in","path"},
+                      {"name","id"},
+                      {"description", "The account ID"},
+                      {"required", true},
+                      {"type","string"}]],
+      method := "get",
+      path := <<"/v3/accounts{id}">>,
+      tags := [<<"test">>]} = maps:get('GetAccount', Endpoints),
+    #{parameters := [[{"in","path"},
+                      {"name","id"},
+                      {"description", "The account ID"},
+                      {"required", true},
+                      {"type","string"}]],
+      method := "delete",
+      path := <<"/v3/accounts{id}">>,
+      tags := [<<"test">>]} = maps:get('DeleteAccount', Endpoints),
     ok.
 
 yaml(Opts) ->

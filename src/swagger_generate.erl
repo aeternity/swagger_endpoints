@@ -49,42 +49,50 @@ template_code() ->
              path(Method, OperationId, maps:to_list(Args));
           path(Method, OperationId, Args) ->
              begin
-               #{path := Endpoint, parameters := Parameters} = maps:get(Method, operation(OperationId)),
-               InPath = [ Param || Param <- Parameters, lists:member({"in", "path"}, Param) ],
-               lists:foldl(fun(Param, Path) -> 
-                               Name = proplists:get_value("name", Param),
-                               case {proplists:get_value("required", Param, false),
-                                     get_by_similar_key(Name, Args)} of
-                                 {false, undefined} -> Path;
-                                 {true, undefined}  ->
-                                   throw({error, {required, Name, Param, OperationId}});
-                                 {_, {_Key, Value}} ->
-                                    iolist_to_binary(string:replace(Path, "{"++Name++"}", to_str(Value)))
-                               end
-                           end, Endpoint, InPath)
+               #{path := Endpoint, parameters := Parameters, method := Method1} = operation(OperationId),
+               case Method =:= Method1 of
+                  true ->
+                    InPath = [ Param || Param <- Parameters, lists:member({"in", "path"}, Param) ],
+                    lists:foldl(fun(Param, Path) -> 
+                                    Name = proplists:get_value("name", Param),
+                                    case {proplists:get_value("required", Param, false),
+                                          get_by_similar_key(Name, Args)} of
+                                      {false, undefined} -> Path;
+                                      {true, undefined}  ->
+                                        throw({error, {required, Name, Param, OperationId}});
+                                      {_, {_Key, Value}} ->
+                                          iolist_to_binary(string:replace(Path, "{"++Name++"}", to_str(Value)))
+                                    end
+                                end, Endpoint, InPath);
+                  false -> {error, unexpected_method}
+                end
              end.),
    ?QUOTE(query(Method, OperationId, Args) when is_map(Args) ->
              query(Method, OperationId, maps:to_list(Args));
           query(Method, OperationId, Args) ->
              begin
-               #{parameters := Parameters} = maps:get(Method, operation(OperationId)),
-               InQuery = [ Param || Param <- Parameters, lists:member({"in", "query"}, Param) ],
-               Query = 
-                 lists:foldr(fun(Param, Query) -> 
-                                 Name = proplists:get_value("name", Param),
-                                 case {proplists:get_value("required", Param, false),
-                                       get_by_similar_key(Name, Args)} of
-                                   {false, undefined} -> Query;
-                                   {true, undefined} ->
-                                     throw({error, {required, Name, Param, OperationId}});
-                                   {_, {_, Value}} ->
-                                     [{Name, http_uri:encode(to_str(Value))} | Query]
-                                 end
-                             end, [], InQuery),
-               case [[K, "=", V] || {K, V} <- Query] of
-                 [] -> <<>>;
-                 Qs -> iolist_to_binary(["?" | lists:join("&", Qs)])
-               end
+               #{parameters := Parameters, method := Method1} = operation(OperationId),
+               case Method =:= Method1 of
+                  true ->
+                    InQuery = [ Param || Param <- Parameters, lists:member({"in", "query"}, Param) ],
+                    Query = 
+                      lists:foldr(fun(Param, Query) -> 
+                                      Name = proplists:get_value("name", Param),
+                                      case {proplists:get_value("required", Param, false),
+                                            get_by_similar_key(Name, Args)} of
+                                        {false, undefined} -> Query;
+                                        {true, undefined} ->
+                                          throw({error, {required, Name, Param, OperationId}});
+                                        {_, {_, Value}} ->
+                                          [{Name, http_uri:encode(to_str(Value))} | Query]
+                                      end
+                                  end, [], InQuery),
+                    case [[K, "=", V] || {K, V} <- Query] of
+                      [] -> <<>>;
+                      Qs -> iolist_to_binary(["?" | lists:join("&", Qs)])
+                    end;
+                  false -> {error, unexpected_method}
+                end
              end.),
    ?QUOTE(prepare_validation() ->
              case ets:info(jesse_ets) of
@@ -103,43 +111,51 @@ template_code() ->
             validate_request(OperationId, Method, Args) when is_list(Args) ->
              begin
                prepare_validation(),
-               #{parameters := Parameters} = maps:get(Method, operation(OperationId)),
-               ToCheck = [ Param || Param <- Parameters, not lists:member({"in", "path"}, Param) ],
-               Errors = lists:foldl(fun(Param, Errs) -> 
-                                        Name = proplists:get_value("name", Param),
-                                        case {proplists:get_value("required", Param, false),
-                                              get_by_similar_key(Name, Args)} of
-                                          {false, undefined} -> Errs;
-                                          {true, undefined}  ->
-                                            [{required, Name, Param, OperationId}|Errs];
-                                          {_, {_, Value}} ->
-                                            case validate(proplists:get_value("schema", Param, #{}), Value) of
-                                              {error, E} -> [E|Errs];
-                                              _ -> Errs
-                                            end
-                                        end
-                                    end, [], ToCheck),
-               case Errors of
-                 [] -> ok;
-                 _ -> {errors, {OperationId, Args, Errors}}
-               end
+               #{parameters := Parameters, method := Method1} = operation(OperationId),
+               case Method =:= Method1 of
+                  true ->
+                    ToCheck = [ Param || Param <- Parameters, not lists:member({"in", "path"}, Param) ],
+                    Errors = lists:foldl(fun(Param, Errs) -> 
+                                              Name = proplists:get_value("name", Param),
+                                              case {proplists:get_value("required", Param, false),
+                                                    get_by_similar_key(Name, Args)} of
+                                                {false, undefined} -> Errs;
+                                                {true, undefined}  ->
+                                                  [{required, Name, Param, OperationId}|Errs];
+                                                {_, {_, Value}} ->
+                                                  case validate(proplists:get_value("schema", Param, #{}), Value) of
+                                                    {error, E} -> [E|Errs];
+                                                    _ -> Errs
+                                                  end
+                                              end
+                                          end, [], ToCheck),
+                    case Errors of
+                      [] -> ok;
+                      _ -> {errors, {OperationId, Args, Errors}}
+                    end;
+                  false -> {error, unexpected_method}
+                end
              end.),
    ?QUOTE(validate_response(OperationId, Method, StatusCode, Response) ->
              begin
-               #{responses := Resps} = maps:get(Method, operation(OperationId)),
-               prepare_validation(),
-               case maps:get(StatusCode, Resps, error) of
-                 error -> {error, {StatusCode, unspecified}};
-                 undefined ->
-                   {ok, StatusCode, Response};
-                 Schema ->
-                   case validate(Schema, Response) of
-                     {ok, _} ->
-                       {ok, StatusCode, Response};
-                     {error, E} ->
-                       {error, {validation, E}}
-                   end
-               end
+               #{responses := Resps, method := Method1} = operation(OperationId),
+               case Method =:= Method1 of
+                  true ->
+                    prepare_validation(),
+                    case maps:get(StatusCode, Resps, error) of
+                      error -> {error, {StatusCode, unspecified}};
+                      undefined ->
+                        {ok, StatusCode, Response};
+                      Schema ->
+                        case validate(Schema, Response) of
+                          {ok, _} ->
+                            {ok, StatusCode, Response};
+                          {error, E} ->
+                            {error, {validation, E}}
+                        end
+                    end;
+                  false -> {error, unexpected_method}
+                end
              end.),
    ?QUOTE(get_by_similar_key(Name, KVs) when is_list(Name) ->
              case lists:keyfind(Name, 1, KVs) of
