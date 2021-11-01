@@ -84,7 +84,7 @@ template_code() ->
                                         {true, undefined} ->
                                           throw({error, {required, Name, Param, OperationId}});
                                         {_, {_, Value}} ->
-                                          [{Name, http_uri:encode(to_str(Value))} | Query]
+                                          [{Name, encode(to_str(Value))} | Query]
                                       end
                                   end, [], InQuery),
                     case [[K, "=", V] || {K, V} <- Query] of
@@ -175,7 +175,36 @@ template_code() ->
                if is_list(Str); is_binary(Str) -> Str;
                   true ->  lists:concat([Str])
                end
-             end.)
+             end.),
+    ?QUOTE(encode(URI) when is_list(URI) ->
+                begin
+                    Reserved = reserved(), 
+                    lists:append([uri_encode(Char, Reserved) || Char <- URI])
+                end;
+           encode(URI) when is_binary(URI) ->
+                begin
+                    Reserved = reserved(),
+                    << <<(uri_encode_binary(Char, Reserved))/binary>> || <<Char>> <= URI >>
+                end.),
+    ?QUOTE(uri_encode(Char, Reserved) ->
+                case sets:is_element(Char, Reserved) of
+                    true ->
+                        [ $% | integer_to_list(Char, 16)];
+                    false ->
+                        [Char]
+                end.),
+    ?QUOTE(uri_encode_binary(Char, Reserved) ->
+                case sets:is_element(Char, Reserved) of
+                    true ->
+                        << $%, (integer_to_binary(Char, 16))/binary >>;
+                    false ->
+                        <<Char>>
+                end.),
+    ?QUOTE(reserved() ->
+            sets:from_list([$;, $:, $@, $&, $=, $+, $,, $/, $?,
+                            $#, $[, $], $<, $>, $\", ${, $}, $|, %"
+                            $\\, $', $^, $%, $ ]).)
+
   ].
 
 
