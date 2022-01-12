@@ -228,5 +228,4 @@ definitions_prefix(?OAS2) -> "/definitions/";
 definitions_prefix(?OAS3) -> "/components/schemas/".
 
 oas_base_version("2.0")       -> ?OAS2;
-oas_base_version("3.0." ++ _) -> ?OAS3;
-oas_base_version(V)           -> V.
+oas_base_version("3.0." ++ _) -> ?OAS3.
