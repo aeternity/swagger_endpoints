@@ -600,7 +600,7 @@ d_keyblock(OASVersion) ->
                   , time => "#" ++ definitions(OASVersion) ++ "UInt64"
                   , version => "#" ++ definitions(OASVersion) ++ "UInt32"
                   , info => "#" ++ definitions(OASVersion) ++ "EncodedByteArray"},
-    Required = maps:keys(Properties),
+    Required = lists:sort(maps:keys(Properties)),
     {"KeyBlock", object, Properties, Required, #{}}.
 
 definitions(?OAS2) -> "/definitions/";
