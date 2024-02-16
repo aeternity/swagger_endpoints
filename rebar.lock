@@ -1,7 +1,7 @@
 {"1.2.0",
 [{<<"jesse">>,
   {git,"https://github.com/for-GET/jesse.git",
-       {ref,"1b5a16cc40c9b299ec825abcaf54a4bf140c4ba9"}},
+       {ref,"cf075d213ae9e9c54a748c93cc64d5350e646f9a"}},
   0},
  {<<"jsx">>,{pkg,<<"jsx">>,<<"2.9.0">>},0},
  {<<"rfc3339">>,{pkg,<<"rfc3339">>,<<"0.2.2">>},1},
