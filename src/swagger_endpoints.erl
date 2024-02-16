@@ -155,7 +155,7 @@ params_to_json_schema(Params, Options, OASVersion) ->
   [ case proplists:get_value("$ref", Param, none) of
       none ->
         case proplists:get_value("schema", Param, none) of
-          none when OASVersion =:= ?OAS2 -> 
+          none when OASVersion =:= ?OAS2 ->
             Param;
           Schema when OASVersion =:= ?OAS2-> %% [{"$ref", Ref}]
             lists:keydelete("schema", 1, Param) ++ [{"schema", to_json_schema(Schema, Options)}];
