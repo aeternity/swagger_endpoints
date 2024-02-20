@@ -3,7 +3,7 @@
 -export([init/1, from_yaml/2]).
 
 -define(OAS2, "2.0").
--define(OAS3, "3.0.0").
+-define(OAS3, "3.0").
 
 %% Yaml parser outputs strings (list of characters).
 %% Both jsx and jesse expect eitehr atoms or binaries
@@ -16,32 +16,32 @@ init(State) ->
   {ok, State1}.
 
 from_yaml(Doc, Options0) ->
-    OASVersion    = oas_base_version(get_version(Doc)),
-    BaseUri =
-        case OASVersion of
-            ?OAS2 -> proplists:get_value("basePath", Doc, "/");
-            ?OAS3 ->
-                [[{"url", Prefix}]] = proplists:get_value("servers", Doc, [[{"url", "/"}]]),
-                Prefix
-        end,
-    Endpoints = proplists:get_value("paths", Doc, []),
-    Definitions0 = 
-        case OASVersion of
-            ?OAS2 -> proplists:get_value("definitions", Doc, []);
-            ?OAS3 ->
-                Components = proplists:get_value("components", Doc, []),
-                proplists:get_value("schemas", Components, [])
-        end,
-    Parameters   =
-        case OASVersion of
-            ?OAS2 -> proplists:get_value("parameters", Doc, []);
-            ?OAS3 ->
-                Cs = proplists:get_value("components", Doc, []),
-                proplists:get_value("parameters", Cs, [])
-        end,
-    Definitions  = build_definitions(Definitions0, [], Options0, OASVersion),
-    Options      = [{params, Parameters}, {defs, Definitions}, {baseuri, BaseUri} | Options0],
-    {Definitions, endpoint_map(Endpoints,  #{}, Options, OASVersion), definitions_prefix(OASVersion)}.
+  OASVersion = get_version(Doc),
+  BaseUri =
+    case OASVersion of
+      ?OAS2 -> proplists:get_value("basePath", Doc, "/");
+      ?OAS3 ->
+        [[{"url", Prefix}]] = proplists:get_value("servers", Doc, [[{"url", "/"}]]),
+        Prefix
+    end,
+  Endpoints = proplists:get_value("paths", Doc, []),
+  Definitions0 =
+    case OASVersion of
+      ?OAS2 -> proplists:get_value("definitions", Doc, []);
+      ?OAS3 ->
+        Components = proplists:get_value("components", Doc, []),
+        proplists:get_value("schemas", Components, [])
+    end,
+  Parameters   =
+    case OASVersion of
+      ?OAS2 -> proplists:get_value("parameters", Doc, []);
+      ?OAS3 ->
+        Cs = proplists:get_value("components", Doc, []),
+        proplists:get_value("parameters", Cs, [])
+    end,
+  Definitions  = build_definitions(Definitions0, [], Options0, OASVersion),
+  Options    = [{params, Parameters}, {defs, Definitions}, {baseuri, BaseUri} | Options0],
+  {Definitions, endpoint_map(Endpoints,  #{}, Options, OASVersion), definitions_prefix(OASVersion)}.
 
 build_definitions([], Definitions, _Options, _OASVersion) ->
   Definitions;
@@ -155,7 +155,7 @@ params_to_json_schema(Params, Options, OASVersion) ->
   [ case proplists:get_value("$ref", Param, none) of
       none ->
         case proplists:get_value("schema", Param, none) of
-          none when OASVersion =:= ?OAS2 -> 
+          none when OASVersion =:= ?OAS2 ->
             Param;
           Schema when OASVersion =:= ?OAS2-> %% [{"$ref", Ref}]
             lists:keydelete("schema", 1, Param) ++ [{"schema", to_json_schema(Schema, Options)}];
@@ -216,16 +216,13 @@ jesse_json_schema(Schema, _Options) ->
   #{error => Schema}.
 
 get_version(Doc) ->
-    case oas_base_version(proplists:get_value("swagger", Doc, not_set)) of
-        ?OAS2 -> ?OAS2;
-        not_set ->
-            case oas_base_version(proplists:get_value("openapi", Doc)) of
-                ?OAS3 -> ?OAS3
-            end
-    end.
+  case proplists:get_value("swagger", Doc, not_set) of
+    ?OAS2 -> ?OAS2;
+    not_set ->
+      case proplists:get_value("openapi", Doc) of
+        ?OAS3 ++ _ -> ?OAS3
+      end
+  end.
 
 definitions_prefix(?OAS2) -> "/definitions/";
 definitions_prefix(?OAS3) -> "/components/schemas/".
-
-oas_base_version("2.0")       -> ?OAS2;
-oas_base_version("3.0." ++ _) -> ?OAS3.

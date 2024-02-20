@@ -315,7 +315,7 @@ yaml(Opts) ->
                     , "    email: " ++ G(email, "apiteam@aeternity.com")
                     , "basePath: " ++ G(basePath, "/v2")
                     , "tags:\n" ++ Tags
-                    , "schemes:\n" ++ Schemes 
+                    , "schemes:\n" ++ Schemes
                     , Paths
                     , "definitions:\n" ++ Definitions
                     ]);
@@ -341,7 +341,7 @@ yaml(Opts) ->
     [Yaml] =yamerl_constr:string(Str),
     Yaml.
 
-multiline(L) -> lists:concat(lists:join("\n", lists:filter(fun(E) -> E =/= skip end, L))). 
+multiline(L) -> lists:concat(lists:join("\n", lists:filter(fun(E) -> E =/= skip end, L))).
 
 encode_method({Method, #{ tags            := Tags0
                         , operationid     := OperationId
@@ -382,12 +382,12 @@ encode_method({Method, #{ tags            := Tags0
                     ?OAS2 ->
                         multiline(
                             [ "        '" ++ integer_to_list(Code) ++ "':"
-                            , "          description: '" ++ RespDesr ++ "'" 
+                            , "          description: '" ++ RespDesr ++ "'"
                             , MaybeSchema("          schema:\n", "")]);
                     ?OAS3 ->
                         multiline(
                             [ "        '" ++ integer_to_list(Code) ++ "':"
-                            , "          description: '" ++ RespDesr ++ "'" 
+                            , "          description: '" ++ RespDesr ++ "'"
                             , MaybeSchema(multiline([ "          content:\n"
                                                     , "            application/json:\n"
                                                     , "              schema:\n"]), "    ")])
@@ -474,7 +474,7 @@ enc_definition(Spec, OASVersion) ->
                         VPrefix ++ "        type: " ++ atom_to_list(Type)
                     end,
                     maps:to_list(Properties0))),
-            Required = 
+            Required =
                 multiline(lists:map(
                     fun(K) -> VPrefix ++ "      - " ++ atom_to_list(K) end,
                     Required0)),
@@ -482,7 +482,7 @@ enc_definition(Spec, OASVersion) ->
               [ VPrefix ++ "  " ++ Name ++ ":"
               , VPrefix ++ "    type: object"
               , VPrefix ++ "    properties:\n" ++ Properties
-              , VPrefix ++ "    required:\n" ++ Required 
+              , VPrefix ++ "    required:\n" ++ Required
               ] ++ Optionals)
     end.
 
@@ -521,7 +521,7 @@ req_get_keyblock_by_hash(OASVersion) ->
         [#{ in => "path"
           , name => "hash"
           , description => "The hash of the block"
-          , required => "true" 
+          , required => "true"
           , type => "string" }],
     Get =
         request_method("get", ["external", "chain"],
@@ -537,7 +537,7 @@ req_post_keyblock(OASVersion) ->
         [#{ in => "body"
           , name => "body"
           , description => "Mined key block"
-          , required => "true" 
+          , required => "true"
           , ref => definitions(OASVersion) ++ "KeyBlock" }],
     Post =
         request_method("post", ["internal", "chain"],
@@ -546,7 +546,7 @@ req_post_keyblock(OASVersion) ->
                       [ success_response(none),
                         error_response(400, "Invalid block", OASVersion)]),
     {"/key-blocks", [Post]}.
-    
+
 success_response(RespObj) ->
     response(200, "Successful operation", RespObj).
 
@@ -600,7 +600,7 @@ d_keyblock(OASVersion) ->
                   , time => "#" ++ definitions(OASVersion) ++ "UInt64"
                   , version => "#" ++ definitions(OASVersion) ++ "UInt32"
                   , info => "#" ++ definitions(OASVersion) ++ "EncodedByteArray"},
-    Required = maps:keys(Properties),
+    Required = lists:sort(maps:keys(Properties)),
     {"KeyBlock", object, Properties, Required, #{}}.
 
 definitions(?OAS2) -> "/definitions/";
